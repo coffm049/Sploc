@@ -6,20 +6,16 @@ permutation_test <- function(data, fixed_eff, age_eff_hat, sex_eff_hat, sigma_er
   # permutation j
   for (j in 1:p) {
     # shuffle Y_sim within family
-    data %>%
+    Ustat_mat[,j] <- data %>%
+      # permutate wihin each family
       group_by(Fam_idtfr) %>%
-      mutate(Y_sim = sample(Y_sim))
-####################################################################################  
-##### WHY Does permutation get ignored if effect estimates are known?????###########
-####################################################################################
+      mutate(Y_sim = sample(Y_sim)) %>%
+      ungroup() %>%
+      # summarize the Ustat (matrix mutliplcation between Y_sim and brain features [columns starting with "X_"], separately)
+      summarize(across(starts_with("X_"), ~ .x %*% V_inv %*% Y_sim)) %>%
+      unlist(use.names= FALSE)
 
-    if (is.na(age_eff_hat) & is.na(sex_eff_hat)) {
-      for (i in 1:n) {
-        brain_feature <- data[, (i + 1)] ########## NEEDS TO CHANGE WHEN DIFFERENT # COVARIATES
-        Y <- data$Y_sim
-        Ustat_mat[i, j] <- as.numeric(brain_feature %*% V_inv %*% (Y - fixed_eff))
-      }
-    }
+    # Could also generate all permutations at once, then loop over them ussing purrr if data isn't too large
   }
   return(list(U = Ustat_mat, V = cov(Ustat_mat)))
 }
